@@ -23,7 +23,7 @@ public class Broker extends Thread{
     private double active;
     private List<Stock> brokerStockList = Exchange.receiveStockList();
     private Map<Stock, Integer> brokerStockStore = new LinkedHashMap<>();
-    private  Lock lock = new ReentrantLock();
+    private Lock lock = new ReentrantLock();
 
     public Broker( double account){
         this.account = account;
@@ -61,21 +61,26 @@ public class Broker extends Thread{
 
     public void run(){
         while(!Exchange.isClosed()){
+            lock.lock();
             try {
-                if(lock.tryLock(10,TimeUnit.MILLISECONDS))
                 Trade.buyStockPack(this);
                 LOGGER.info("Broker "+this.getId()+" is buying");
                 TimeUnit.MILLISECONDS.sleep(10);
             } catch (InterruptedException e) {
                 e.printStackTrace();
+            }finally {
+                lock.unlock();
             }
+
+            lock.lock();
             try {
-                if(lock.tryLock(10,TimeUnit.MILLISECONDS))
                 Trade.sellStockPack(this);
                 LOGGER.info("Broker "+this.getId()+" is selling");
                 TimeUnit.MILLISECONDS.sleep(10);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+               e.printStackTrace();
+            }finally {
+                lock.unlock();
             }
         }
     }
@@ -85,8 +90,9 @@ public class Broker extends Thread{
         return "Broker{" +
                 "id=" + id +
                 ", account=" + account +
-                '}';
+                ", active=" + active + '}';
     }
 
 
 }
+
