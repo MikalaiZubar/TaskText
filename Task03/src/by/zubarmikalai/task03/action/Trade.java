@@ -13,71 +13,68 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class Trade {
     private static Lock lock = new ReentrantLock();
-    private static final int maxPossibleIssue = 200_000;
+    private static final int nominalIssue = 200_000;
     private static int quantity;
 
     public static void buyStockPack(Broker broker){
-        lock.lock();
-        int i;
-        quantity = 0;
-        double amount = 0;
-        Stock stock = null;
-        boolean action = true;
-        while (action){
-            i = (int) (Math.random() * Exchange.receiveStockList().size());
-            stock = Exchange.receiveStockList().get(i);
-            for(Map.Entry<Stock,Integer> entry: Exchange.getStockStore().entrySet()){
-                if(stock.equals(entry.getKey())){
-                    quantity = (int) (Math.random() * entry.getValue()) + 1;
-                    amount = quantity * stock.getCost();
-                    if(amount <= broker.getAccount()) {
-                        entry.setValue(entry.getValue() - quantity);
-                        action = false;
-                   }
+        //    lock.lock(); //??? works both in Broker and trade
+            int i;
+            quantity = 0;
+            double amount = 0;
+            Stock stock = null;
+            boolean action = true;
+            while (action){
+                i = (int) (Math.random() * Exchange.receiveStockList().size());
+                stock = Exchange.receiveStockList().get(i);
+                for(Map.Entry<Stock,Integer> entry: Exchange.getStockStore().entrySet()){
+                    if(stock.equals(entry.getKey())){
+                        quantity = (int) (Math.random() * entry.getValue());
+                        amount = quantity * stock.getCost();
+                        if(amount <= broker.getAccount()) {
+                            entry.setValue(entry.getValue() - quantity);
+                            action = false;
+                        }
+                    }
                 }
             }
-        }
-        //double stockCost = stock.getCost() * (1+createDiscount());  //Doesn't work???
-
-        double stockCost = stock.getCost()*1.1;  // max possible - cost * 1.1 (+10%)
-        stock.setCost(stockCost);
-        int counter = 0;
-        for(Map.Entry<Stock, Integer> entry: broker.getBrokerStockStore().entrySet()){
-            if(stock.equals(entry.getKey())){
-                entry.setValue(entry.getValue()+quantity);
-                counter++;
+            double stockCost = stock.getCost() * (1+createDiscount());
+            stock.setCost(stockCost);
+            int counter = 0;
+            for(Map.Entry<Stock, Integer> entry: broker.getBrokerStockStore().entrySet()){
+                if(stock.equals(entry.getKey())){
+                    entry.setValue(entry.getValue()+quantity);
+                    counter++;
+                }
             }
-        }
-        if(counter == 0){
-            broker.getBrokerStockStore().put(stock, quantity);
-            broker.getBrokerStockList().add(stock);
-        }
+            if(counter == 0){
+                broker.getBrokerStockStore().put(stock, quantity);
+                broker.getBrokerStockList().add(stock);
+            }
 
-        double brokerAccount = broker.getAccount() - amount;
-        broker.setAccount(brokerAccount);
-        double stockActive = 0;
-        for(Map.Entry<Stock, Integer> entry: broker.getBrokerStockStore().entrySet()){
-            stockActive += entry.getKey().getCost()*entry.getValue();
-        }
-        broker.setActive(stockActive+broker.getAccount());
-        lock.unlock();
+            double brokerAccount = broker.getAccount() - amount;
+            broker.setAccount(brokerAccount);
+            double stockActive = 0;
+            for(Map.Entry<Stock, Integer> entry: broker.getBrokerStockStore().entrySet()){
+                stockActive += entry.getKey().getCost()*entry.getValue();
+            }
+            broker.setActive(stockActive+brokerAccount);
+        //    lock.unlock();
     }
 
     public static void sellStockPack(Broker broker) {
-        lock.lock();
+     //   lock.lock();
         int i = (int) (Math.random() * broker.getBrokerStockList().size());
         Stock stock = broker.getBrokerStockList().get(i);
         quantity = 0;
         double amount = 0;
         for(Map.Entry<Stock, Integer> entry: broker.getBrokerStockStore().entrySet()){
             if(stock.equals(entry.getKey())){
-                quantity = (int) (Math.random() * entry.getValue()) + 1;
+                quantity = (int) (Math.random() * entry.getValue());
                 amount = quantity * entry.getKey().getCost();
                 entry.setValue(entry.getValue()-quantity);
             }
         }
-        //double stockCost = stock.getCost() *(1-createDiscount()); // doesn't work???
-        double stockCost = stock.getCost()*0.9; // min possible - 10%
+        double stockCost = stock.getCost() *(1-createDiscount());
         stock.setCost(stockCost);
         for(Map.Entry<Stock, Integer> entry: Exchange.getStockStore().entrySet()){
             if(stock.equals(entry.getKey())){
@@ -90,15 +87,13 @@ public class Trade {
         for(Map.Entry<Stock, Integer> entry: broker.getBrokerStockStore().entrySet()){
             stockActive += entry.getKey().getCost()*entry.getValue();
         }
-        broker.setActive(stockActive+broker.getAccount());
-        lock.unlock();
+        broker.setActive(stockActive+brokerAccount);
+      //  lock.unlock();
     }
 
 
     public static double createDiscount(){
-        lock.lock();
-        double discount = quantity/maxPossibleIssue;
-        lock.unlock();
+        double discount = quantity/nominalIssue;
         return discount;
     }
 }
